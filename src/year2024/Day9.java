@@ -9,66 +9,77 @@ import java.util.LinkedList;
 
 public class Day9
 {
-	static final String example = "2333133121414131402";
-	static final String example2 = "12345";
-	
-	static ArrayList<Integer> drive = new ArrayList<>();
+	static ArrayList<Integer> blocks = new ArrayList<>();
 	
 	public static void main(String[] args) throws IOException
 	{
-		BufferedReader reader = new BufferedReader(new FileReader("2024Input/Day9"));
+		BufferedReader reader = new BufferedReader(new FileReader("Input/2024/Day9"));
 		String driveMap = reader.readLine();
 		reader.close();
 		
-		load2(driveMap);
+		/*
+		loadBlocks(driveMap);
+		//Continue shifting blocks until they are maximally compact.
+		while (!areBlocksCompact())
+			shiftBlocks();
+		 */
+		
+		loadFiles(driveMap);
 		long start = System.currentTimeMillis();
-		while (!allMoved())
-			shift2();
+		//Continue shifting files until they have all been moved.
+		while (!allFilesMoved())
+			shiftFile();
 		long duration = System.currentTimeMillis() - start;
-		System.out.println(checkSum2() + " in " + duration + "ms");
+		System.out.println(filesChecksum() + " in " + duration + "ms");
 	}
 	
-	static long checkSum()
+	static long blocksCheckSum()
 	{
 		long total = 0;
-		for (int index = 0; index < drive.size(); index++)
-			if (drive.get(index) != -1)
-				total += (long)index * drive.get(index);
+		for (int index = 0; index < blocks.size(); index++)
+			if (blocks.get(index) != -1)
+				total += (long)index * blocks.get(index);
 		return total;
 	}
 	
-	static void shift()
+	/**
+	 * Moves the right most occupied block into the leftmost unoccupied block.
+	 */
+	static void shiftBlocks()
 	{
-		int emptyIndex = getFirstEmpty();
-		int occupiedIndex = getLastOccupied();
+		int emptyIndex = getLeftMostUnoccupiedBlock();
+		int occupiedIndex = getRightMostOccupiedBlock();
 		if (emptyIndex != -1 && occupiedIndex != -1)
 		{
-			int fileID = drive.get(occupiedIndex);
-			drive.set(occupiedIndex, -1);
-			drive.set(emptyIndex, fileID);
+			int fileID = blocks.get(occupiedIndex);
+			blocks.set(occupiedIndex, -1);
+			blocks.set(emptyIndex, fileID);
 		}
 	}
 	
-	static int getLastOccupied()
+	static int getRightMostOccupiedBlock()
 	{
-		for (int index = drive.size() - 1; index >= 0; index--)
-			if (drive.get(index) != -1)
+		for (int index = blocks.size() - 1; index >= 0; index--)
+			if (blocks.get(index) != -1)
 				return index;
 		return -1;
 	}
 	
-	static int getFirstEmpty()
+	static int getLeftMostUnoccupiedBlock()
 	{
-		for (int index = 0; index < drive.size(); index++)
-			if (drive.get(index) == -1)
+		for (int index = 0; index < blocks.size(); index++)
+			if (blocks.get(index) == -1)
 				return index;
 		return -1;
 	}
 	
-	static boolean isCompact()
+	/**
+	 * Checks if there are any unoccupied blocks between occupied blocks.
+	 */
+	static boolean areBlocksCompact()
 	{
 		boolean foundEmpty = false;
-		for (int block : drive)
+		for (int block : blocks)
 		{
 			if (!foundEmpty && block == -1)
 				foundEmpty = true;
@@ -78,112 +89,134 @@ public class Day9
 		return true;
 	}
 	
-	static String driveToString()
+	static String blocksToString()
 	{
 		StringBuilder builder = new StringBuilder();
-		for (int block : drive)
+		for (int block : blocks)
 			builder.append(block == -1 ? "." : block);
 		return builder.toString();
 	}
 	
-	static void load(String map)
+	static void loadBlocks(String map)
 	{
 		int fileID = 0;
 		boolean isFile = true;
-		drive.clear();
+		blocks.clear();
+		//Read in files, alternating between empty files and filled files.
 		for (int index = 0; index < map.length(); index++)
 		{
 			int size = Integer.parseInt(map.charAt(index) + "");
 			for (int blockNum = 0; blockNum < size; blockNum++)
-				drive.add(isFile ? fileID : -1);
+				blocks.add(isFile ? fileID : -1);
 			if (isFile)
 				fileID++;
 			isFile = !isFile;
 		}
 	}
 	
-	static LinkedList<Block> drive2 = new LinkedList<>();
+	static LinkedList<File> files = new LinkedList<>();
 	
-	static boolean shift2()
+	/**
+	 * Moves the right most unmoved file into the left most empty file that is large enough to contain it.
+	 * <p>
+	 *     If there are no empty files to the left of the unmoved file that are large enough to contain it then the file
+	 *     is not moved but still marked as having been moved.
+	 * </p>
+	 */
+	static boolean shiftFile()
 	{
-		Block block = getLastUnmovedBlock();
-		Block space = firstFreeBlock(block.size, block.index);
-		if (block == null)
+		File file = getRightMostUnmovedFile();
+		File space = leftMostEmptyFile(file.size, file.index);
+		
+		//If we have no unmoved files, then we have nothing to move.
+		if (file == null)
 			return false;
 		
+		//If there were no empty files to the left of the unmoved file that were large enough to contain it, we can't
+		//move it.
 		if (space == null)
 		{
-			block.moved = true;
+			file.moved = true;
 			return false;
 		}
 		
-		int mapIndex = drive2.indexOf(space);
-		Block newBlock = new Block(block.fileID, block.size, space.index);
-		newBlock.moved = true;
-		drive2.add(mapIndex, newBlock);
-		space.size -= block.size;
-		space.index += block.size;
-		block.fileID = -1;
+		int mapIndex = files.indexOf(space);
+		//Create a new file to be the moved file.
+		File newFile = new File(file.fileID, file.size, space.index);
+		newFile.moved = true;
+		files.add(mapIndex, newFile);
+		
+		//Shrink and shift the empty file to accommodate the new file.
+		space.size -= file.size;
+		space.index += file.size;
+		//If the empty file now has a size of 0, it should be removed from the drive.
 		if (space.size == 0)
-			drive2.remove(space);
+			files.remove(space);
+		
+		//Set the old file to be an empty file.
+		file.fileID = -1;
 		return true;
 	}
 	
-	static Block getLastUnmovedBlock()
+	static File getRightMostUnmovedFile()
 	{
-		for (Iterator<Block> iterator = drive2.descendingIterator(); iterator.hasNext();)
+		for (Iterator<File> iterator = files.descendingIterator(); iterator.hasNext();)
 		{
-			Block block = iterator.next();
-			if (block.fileID != -1 && !block.moved)
-				return block;
+			File file = iterator.next();
+			if (file.fileID != -1 && !file.moved)
+				return file;
 		}
 		return null;
 	}
 	
-	static Block firstFreeBlock(int minimumSize, int indexLimit)
+	/**
+	 * Gets the left most empty file that meets the given requirements.
+	 */
+	static File leftMostEmptyFile(int minimumSize, int indexLimit)
 	{
-		for (Block block : drive2)
+		for (File file : files)
 		{
-			if (block.fileID == -1 && block.index < indexLimit && block.size >= minimumSize)
-				return block;
+			if (file.fileID == -1 && file.index < indexLimit && file.size >= minimumSize)
+				return file;
 		}
 		return null;
 	}
 	
-	static boolean allMoved()
+	static boolean allFilesMoved()
 	{
-		for (Block block : drive2)
-			if (block.fileID != -1 && !block.moved)
+		for (File file : files)
+			if (file.fileID != -1 && !file.moved)
 				return false;
 		return true;
 	}
 	
-	static long checkSum2()
+	static long filesChecksum()
 	{
 		long total = 0;
-		for (Block block : drive2)
-			total += block.checkSum();
+		for (File file : files)
+			total += file.checkSum();
 		return total;
 	}
 	
-	static String drive2ToString()
+	static String filesToString()
 	{
 		StringBuilder builder = new StringBuilder();
-		for (Block block : drive2)
-			builder.append(block);
+		for (File file : files)
+			builder.append(file);
 		return builder.toString();
 	}
 	
-	static void load2(String map)
+	static void loadFiles(String map)
 	{
 		int fileID = 0;
 		boolean isFile = true;
-		drive2.clear();
+		files.clear();
 		int driveIndex = 0;
+		//Read in files, alternating between empty files and filled files.
 		for (int index = 0; index < map.length(); index++)
 		{
 			int size = Integer.parseInt(map.charAt(index) + "");
-			drive2.add(new Block(isFile ? fileID : -1, size, driveIndex));
+			files.add(new File(isFile ? fileID : -1, size, driveIndex));
 			driveIndex += size;
 			if (isFile)
 				fileID++;
@@ -191,7 +224,7 @@ public class Day9
 		}
 	}
 	
-	static class Block
+	static class File
 	{
 		int fileID;
 		int size;
@@ -199,7 +232,7 @@ public class Day9
 		
 		boolean moved = false;
 		
-		Block(int fileID, int size, int index)
+		File(int fileID, int size, int index)
 		{
 			this.fileID = fileID;
 			this.size = size;
