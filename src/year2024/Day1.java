@@ -36,23 +36,23 @@ public class Day1
 		countOccurrences();
 		
 		int total = 0;
+		//If the value is not contained in the map, a default count of 0 is given, meaning it won't impact the total.
 		for (Integer value : list1)
-		{
-			if (counts.containsKey(value))
-				total += value * counts.get(value);
-		}
+			total += value * counts.computeIfAbsent(value, mapKey -> 0);
 		System.out.println(total);
 	}
 	
+	/**
+	 * Counts how many times each value appears in list2
+	 * <p>
+	 *     Results are stored in the counts hashmap where any given value when used as they key will retrieve the total
+	 *     number of times it appeared in the list.
+	 * </p>
+	 */
 	public static void countOccurrences()
 	{
 		for (Integer value : list2)
-		{
-			if (counts.containsKey(value))
-				counts.put(value, counts.get(value) + 1);
-			else
-				counts.put(value, 1);
-		}
+			counts.put(value, counts.computeIfAbsent(value, mapKey -> 0) + 1);
 	}
 	
 	public static void sortLists()
@@ -63,7 +63,7 @@ public class Day1
 	
 	public static void readLists() throws IOException
 	{
-		BufferedReader reader = new BufferedReader(new FileReader("2024Input/year2024.Day1"));
+		BufferedReader reader = new BufferedReader(new FileReader("Input/2024/Day1"));
 		
 		while (reader.ready())
 		{

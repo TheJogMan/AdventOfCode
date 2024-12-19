@@ -10,16 +10,19 @@ public class Day7
 {
 	public static void main(String[] args) throws IOException
 	{
-		BufferedReader reader = new BufferedReader(new FileReader("2024Input/Day7"));
+		//Read Data.
+		BufferedReader reader = new BufferedReader(new FileReader("Input/2024/Day7"));
 		ArrayList<Equation> equations = new ArrayList<>();
 		for (String line : reader.lines().toList())
 			equations.add(new Equation(line));
 		reader.close();
 		
 		long start = System.currentTimeMillis();
+		//Attempt to solve all equations.
 		equations.forEach(Equation::solve);
 		
 		AtomicLong total = new AtomicLong();
+		//Sum up the answers of all the valid equations.
 		equations.forEach(
 		(equation) ->
 		{
@@ -55,6 +58,9 @@ public class Day7
 			validity = Validity.unchecked;
 		}
 		
+		/**
+		 * Determine what the answer to this equation would be with the currently set operators.
+		 */
 		long evaluate()
 		{
 			long result = values[0];
@@ -68,8 +74,9 @@ public class Day7
 		 */
 		boolean solve()
 		{
-			System.out.println("Solving: " + this);
+			System.out.println("Solving: " + toStringWithoutOperators());
 			validity = Validity.valid;
+			//Attempt all possible operator combinations looking for one that produces the desired answer.
 			while (evaluate() != answer)
 			{
 				if (incrementOperators())
@@ -78,8 +85,17 @@ public class Day7
 					break;
 				}
 			}
-			System.out.println("         " + this + " " + validity);
-			return validity == Validity.valid;
+			
+			if (validity == Validity.valid)
+			{
+				System.out.println("         " + this);
+				return true;
+			}
+			else
+			{
+				System.out.println("         Invalid");
+				return false;
+			}
 		}
 		
 		/**
@@ -109,9 +125,18 @@ public class Day7
 		public String toString()
 		{
 			StringBuilder builder = new StringBuilder();
-			builder.append(answer).append(": ").append(values[0]);
+			builder.append(answer).append(" = ").append(values[0]);
 			for (int index = 0; index < operators.length; index++)
 				builder.append(' ').append(operators[index].chr).append(' ').append(values[index + 1]);
+			return builder.toString();
+		}
+		
+		public String toStringWithoutOperators()
+		{
+			StringBuilder builder = new StringBuilder();
+			builder.append(answer).append(" = ").append(values[0]);
+			for (int index = 0; index < operators.length; index++)
+				builder.append(" ? ").append(values[index + 1]);
 			return builder.toString();
 		}
 	}

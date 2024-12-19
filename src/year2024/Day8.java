@@ -10,7 +10,7 @@ public class Day8
 {
 	public static void main(String[] args) throws IOException
 	{
-		Map map = new Map("2024Input/Day8");
+		Map map = new Map("Input/2024/Day8");
 		
 		int total = map.calculateAntinodes(true);
 		
@@ -23,23 +23,35 @@ public class Day8
 	{
 		int size;
 		boolean[][] antinodes;
+		//Antennae are grouped by frequency
 		HashMap<Character, ArrayList<Antenna>> antennae = new HashMap<>();
 		
 		Map(String file) throws IOException
 		{
 			BufferedReader reader = new BufferedReader(new FileReader(file));
-			size = Integer.parseInt(reader.readLine());
-			antinodes = new boolean[size][size];
-			for (int y = 0; y < size; y++)
+			int y = 0;
+			String line = reader.readLine();
+			while (!line.isEmpty())
 			{
-				String line = reader.readLine();
+				//If this is the first line then we use it to determine the grid size.
+				if (antinodes == null)
+				{
+					size = line.length();
+					antinodes = new boolean[size][size];
+				}
+				
 				for (int x = 0; x < size; x++)
 				{
-					antinodes[y][x] = false;
 					char frequency = line.charAt(x);
 					if (frequency != '.')
-						antennae.computeIfAbsent(frequency, (AntennaFrequency) -> new ArrayList<>()).add(new Antenna(frequency, x, y));
+						antennae.computeIfAbsent(frequency, AntennaFrequency -> new ArrayList<>()).add(new Antenna(frequency, x, y));
 				}
+				
+				y++;
+				if (reader.ready())
+					line = reader.readLine();
+				else
+					line = "";
 			}
 			reader.close();
 		}
@@ -58,12 +70,15 @@ public class Day8
 			ArrayList<int[]> calculateAntinodes(Map map, Antenna otherAntenna, boolean useResonantHarmonics)
 			{
 				ArrayList<int[]> antinodes = new ArrayList<>();
+				//Determine the step size between these two antennae.
 				int dx = (otherAntenna.x - x) * 2;
 				int dy = (otherAntenna.y - y) * 2;
 				
 				int walkX = x + dx;
 				int walkY = y + dy;
 				int stepCount = 0;
+				//Continue stepping until we leave the grid.
+				//Or only step once if we aren't using harmonics.
 				while (map.inBounds(walkX, walkY) && (stepCount == 0 || useResonantHarmonics))
 				{
 					antinodes.add(new int[] {walkX, walkY});
@@ -71,6 +86,8 @@ public class Day8
 					walkY += dy;
 					stepCount++;
 				}
+				
+				//If we are using harmonics we will need to also step in the opposite direction.
 				if (useResonantHarmonics)
 				{
 					walkX = x - dx;
@@ -87,20 +104,26 @@ public class Day8
 			}
 		}
 		
+		/**
+		 * Calculate all antinodes for all antennae in the grid.
+		 */
 		int calculateAntinodes(boolean useResonantHarmonics)
 		{
 			int total = 0;
+			//Iterate over every possible pair of antenna in each frequency group.
+			//Only recording antinode positions if we haven't already found an antinode at that position.
 			for (ArrayList<Antenna> antennaGroup : antennae.values())
-			{
 				for (Antenna antenna : antennaGroup) for (Antenna otherAntenna : antennaGroup)
-					if (!antenna.equals(otherAntenna))
+					if (!antenna.equals(otherAntenna))//An antenna can't have antinodes with itself.
 					{
+						//The antenna itself counts as an antinode
 						if (!this.antinodes[antenna.y][antenna.x])
 						{
 							total++;
 							this.antinodes[antenna.y][antenna.x] = true;
 						}
 						
+						//Determine and check all other antinodes.
 						ArrayList<int[]> antinodes = antenna.calculateAntinodes(this, otherAntenna, useResonantHarmonics);
 						for (int[] position : antinodes)
 							if (inBounds(position[0], position[1]))
@@ -110,10 +133,12 @@ public class Day8
 									this.antinodes[position[1]][position[0]] = true;
 								}
 					}
-			}
 			return total;
 		}
 		
+		/**
+		 * Counts the number of unique antinode positions in this grid.
+		 */
 		int countAntinodes()
 		{
 			int total = 0;

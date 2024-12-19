@@ -35,17 +35,29 @@ public class Day12
 		Farm(String input) throws IOException
 		{
 			BufferedReader reader = new BufferedReader(new FileReader(input));
-			size = Integer.parseInt(reader.readLine());
-			plots = new Plot[size][size];
-			for (int y = 0; y < size; y++)
+			int y = 0;
+			String line = reader.readLine();
+			while (!line.isEmpty())
 			{
-				String line = reader.readLine();
+				//If this is the first line, we use it to determine the size of the grid.
+				if (plots == null)
+				{
+					size = line.length();
+					plots = new Plot[size][size];
+				}
+				
 				for (int x = 0; x < size; x++)
 				{
 					char plantType = line.charAt(x);
 					plantTypes.add(plantType);
 					plots[y][x] = new Plot(plantType, x, y);
 				}
+				
+				y++;
+				if (reader.ready())
+					line = reader.readLine();
+				else
+					line = "";
 			}
 			reader.close();
 		}
@@ -81,6 +93,8 @@ public class Day12
 			for (int y = 0; y < size; y++) for (int x = 0; x < size; x++)
 			{
 				Plot plot = plots[y][x];
+				//If this plot is not part of a region, we create a new region.
+				//We then expand that region to contain all adjacent plots of the same plant type.
 				if (plot.region == null)
 				{
 					Region region = new Region(plot);
@@ -90,6 +104,12 @@ public class Day12
 			}
 		}
 		
+		/**
+		 * Gets a plot in this grid.
+		 * <p>
+		 *     Returns an empty plot for all positions not inside the grid.
+		 * </p>
+		 */
 		Plot plot(int x, int y)
 		{
 			if (x >= 0 && x < size && y >= 0 && y < size)
@@ -114,6 +134,7 @@ public class Day12
 			@Override
 			public boolean equals(Object object)
 			{
+				//Two plots are equal if they have the same plant type at the same grid position.
 				if (object instanceof Plot otherPlot)
 					return otherPlot.x == x && otherPlot.y == y && otherPlot.plantType == plantType;
 				else
@@ -138,6 +159,8 @@ public class Day12
 			
 			void expand(Plot origin)
 			{
+				//Recursively expand in all 4 cardinal directions to claim all adjacent unclaimed plots of the same
+				//plant type.
 				for (Direction direction : Direction.values())
 				{
 					Plot plot = plot(origin.x + direction.dx, origin.y + direction.dy);
@@ -171,11 +194,15 @@ public class Day12
 				{
 					sides = 0;
 					sidePlots.clear();
+					//We iterate over all plots in the region looking for plots along the perimeter
 					for (Plot plot : plots)
 						for (Direction direction : Direction.values())
 						{
 							Plot otherPlot = plot(plot.x + direction.dx, plot.y + direction.dy);
 							ArrayList<Plot> sidePlots = this.sidePlots.computeIfAbsent(direction, sideDirection -> new ArrayList<>());
+							//This plot is on the perimeter if the other plot is outside the region
+							//This is also a new side that we need to check if that other plot was not already found to
+							//be part of a side in this direction.
 							if (!this.equals(otherPlot.region) && !sidePlots.contains(otherPlot))
 							{
 								sides++;
@@ -187,10 +214,14 @@ public class Day12
 				return sides;
 			}
 			
+			/**
+			 * Walk along the length of a side to determine which plots it runs along.
+			 */
 			void exploreSide(Plot start, Direction side)
 			{
 				ArrayList<Plot> sidePlots = this.sidePlots.computeIfAbsent(side, sideDirection -> new ArrayList<>());
 				Direction oppositeDirection = side.oppositeDirection();
+				//We will walk in both of the two directions that run along this side.
 				for (Direction direction : side.perpendicularDirections())
 				{
 					int x = start.x;
@@ -202,6 +233,8 @@ public class Day12
 						y += direction.dy;
 						Plot exterior = plot(x, y);
 						Plot interior = plot(x + oppositeDirection.dx, y + oppositeDirection.dy);
+						//We continue walking until either the interior plot is no longer inside the region or the
+						//exterior plot is no longer outside the region.
 						if (!this.equals(exterior.region) && this.equals(interior.region))
 							sidePlots.add(exterior);
 						else
@@ -214,6 +247,8 @@ public class Day12
 			{
 				if (perimeter == -1)
 				{
+					//We calculate the perimeter by counting the number of plots not part of this region that are
+					//adjacent to the plots in this region.
 					perimeter = 0;
 					for (Plot plot : plots)
 						for (Direction direction : Direction.values())

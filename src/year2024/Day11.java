@@ -16,11 +16,88 @@ public class Day11
 		for (int index = 0; index < initialState.length; index++)
 			initialState[index] = Long.parseLong(initialStones[index]);
 		
-		//aoc(initialState, 500);
-		graph(initialState, 1000);
+		//adventOfCode(initialState, 500);
+		recordExecutionTimes(initialState, 1000);
 	}
 	
-	static void graph(long[] initialStones, int maxBlinkCount) throws IOException
+	/*
+	 * For this day a friend of mine had used a different approach, so I decided to compare the performance of the two
+	 * approaches.
+	 * This was also the first day that I couldn't come up with an effective solution on my own.
+	 */
+	
+	static void adventOfCode(long[] initialStones, int blinkCount)
+	{
+		long start = System.currentTimeMillis();
+		long total = calculateStoneCount(initialStones, blinkCount);
+		long duration = System.currentTimeMillis() - start;
+		System.out.println(total + " " + duration + "ms");
+		
+		start = System.currentTimeMillis();
+		total = calculateStoneCount2(initialStones, blinkCount);
+		duration = System.currentTimeMillis() - start;
+		System.out.println(total + " " + duration + "ms");
+	}
+	
+	static long calculateStoneCount(long[] initialStones, int blinkCount)
+	{
+		/*
+		 * Since trying to process each individual stone as a distinct object is impossible (at least on my hardware) we
+		 * instead keep track of how many stones have the same number, and process them all as a group.
+		 *
+		 * We do this with a hashmap where the number is the key and the value is the amount of stones with that number.
+		 */
+		
+		HashMap<Long, Long> stoneCounts = new HashMap<>();
+		//Initialize our counts.
+		for (long stone : initialStones)
+			stoneCounts.put(stone, 1L);
+		
+		//Process each blink.
+		for (int blink = 0; blink < blinkCount; blink++)
+		{
+			HashMap<Long, Long> newCounts = new HashMap<>();
+			for (Map.Entry<Long, Long> stoneCount : stoneCounts.entrySet())
+			{
+				long stone = stoneCount.getKey();
+				long count = stoneCount.getValue();
+				String stringValue = String.valueOf(stone);
+				
+				//If the number was 0, it becomes 1.
+				if (stone == 0)
+					newCounts.put(1L, newCounts.computeIfAbsent(1L, newStone -> 0L) + count);
+				else if (stringValue.length() % 2 == 0)
+				{
+					//If the number had an even length, it gets split in half.
+					int middle = stringValue.length() / 2;
+					long left = Long.parseLong(stringValue.substring(0, middle));
+					long right = Long.parseLong(stringValue.substring(middle));
+					newCounts.put(left, newCounts.computeIfAbsent(left, newStone -> 0L) + count);
+					newCounts.put(right, newCounts.computeIfAbsent(right, newStone -> 0L) + count);
+				}
+				else
+				{
+					//Otherwise the number gets multiplied.
+					long newStone = stone * 2024;
+					newCounts.put(newStone, newCounts.computeIfAbsent(newStone, newStoneNumber -> 0L) + count);
+				}
+				stoneCounts = newCounts;
+			}
+		}
+		
+		//Finally we determine the total number of stones.
+		long total = 0;
+		for (Long count : stoneCounts.values())
+			total += count;
+		return total;
+	}
+	
+	
+	
+	
+	
+	
+	static void recordExecutionTimes(long[] initialStones, int maxBlinkCount) throws IOException
 	{
 		BufferedWriter writer = new BufferedWriter(new FileWriter("executionTimes.csv"));
 		writer.write("iterationCount,solution1,solution2");
@@ -50,57 +127,12 @@ public class Day11
 		writer.close();
 	}
 	
-	static void aoc(long[] initialStones, int blinkCount)
-	{
-		long start = System.currentTimeMillis();
-		long total = calculateStoneCount(initialStones, blinkCount);
-		long duration = System.currentTimeMillis() - start;
-		System.out.println(total + " " + duration + "ms");
-		
-		start = System.currentTimeMillis();
-		total = calculateStoneCount2(initialStones, blinkCount);
-		duration = System.currentTimeMillis() - start;
-		System.out.println(total + " " + duration + "ms");
-	}
-	
-	static long calculateStoneCount(long[] initialStones, int blinkCount)
-	{
-		HashMap<Long, Long> stoneCounts = new HashMap<>();
-		for (long stone : initialStones)
-			stoneCounts.put(stone, 1L);
-		for (int blink = 0; blink < blinkCount; blink++)
-		{
-			HashMap<Long, Long> newCounts = new HashMap<>();
-			for (Map.Entry<Long, Long> stoneCount : stoneCounts.entrySet())
-			{
-				long stone = stoneCount.getKey();
-				long count = stoneCount.getValue();
-				String stringValue = String.valueOf(stone);
-				
-				if (stone == 0)
-					newCounts.put(1L, newCounts.computeIfAbsent(1L, (newStone) -> 0L) + count);
-				else if (stringValue.length() % 2 == 0)
-				{
-					int middle = stringValue.length() / 2;
-					long left = Long.parseLong(stringValue.substring(0, middle));
-					long right = Long.parseLong(stringValue.substring(middle));
-					newCounts.put(left, newCounts.computeIfAbsent(left, (newStone) -> 0L) + count);
-					newCounts.put(right, newCounts.computeIfAbsent(right, (newStone) -> 0L) + count);
-				}
-				else
-				{
-					long newStone = stone * 2024;
-					newCounts.put(newStone, newCounts.computeIfAbsent(newStone, (newStoneNumber) -> 0L) + count);
-				}
-				stoneCounts = newCounts;
-			}
-		}
-		
-		long total = 0;
-		for (Long count : stoneCounts.values())
-			total += count;
-		return total;
-	}
+	/*
+	 * Alternative solution.
+	 *
+	 * This solution uses a memoized cache.
+	 * Using the inputs to the method to index a hashmap to avoid recomputing the same inputs more than once.
+	 */
 	
 	static HashMap<Integer, HashMap<Long, Long>> cache = new HashMap<>();
 	

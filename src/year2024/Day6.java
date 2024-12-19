@@ -13,15 +13,16 @@ public class Day6
 	
 	public static void main(String[] args) throws IOException
 	{
-		Grid startingGrid = new Grid("2024Input/Day6");
+		Grid startingGrid = new Grid("Input/2024/Day6");
 		Grid grid = new Grid(startingGrid);
 		System.out.println(grid);
 		System.out.println();
 		
+		//Continue processing the guard until they leave the grid.
+		//In this first run we will be recording all positions where we could potentially place a new obstacle to change
+		//the guard's path.
 		while (grid.guard.inBounds())
-		{
 			grid.guard.step();
-		}
 		recordObstacleCandidates = false;
 		
 		System.out.println(grid);
@@ -30,17 +31,18 @@ public class Day6
 		
 		long start = System.currentTimeMillis();
 		int total = 0;
+		//Iterate through all our candidate positions to determine which one's result in a looped path.
 		for (ObstacleCandidate candidate : obstacleCandidates)
 		{
 			grid = new Grid(startingGrid);
 			grid.setTile(candidate.x, candidate.y, TileType.new_obstacle);
 			
+			//Continue processing the guard until they either leave the grid or get stuck in a loop.
 			while (grid.guard.inBounds() && !grid.guard.inLoop())
 				grid.guard.step();
+			
 			if (grid.guard.inLoop())
-			{
 				total++;
-			}
 		}
 		long duration = System.currentTimeMillis() - start;
 		System.out.println(total + " " + duration);
@@ -72,24 +74,34 @@ public class Day6
 		Grid(String sourceFile) throws IOException
 		{
 			BufferedReader reader = new BufferedReader(new FileReader(sourceFile));
-			size = Integer.parseInt(reader.readLine());
-			grid = new Tile[size][size];
-			for (int y = 0; y < size; y++)
+			int y = 0;
+			String line = reader.readLine();
+			while (!line.isEmpty())
 			{
-				String line = reader.readLine();
+				//If this is the first line, we use it to determine the size of the grid.
+				if (grid == null)
+				{
+					size = line.length();
+					grid = new Tile[size][size];
+				}
+				
 				for (int x = 0; x < size; x++)
 				{
 					char chr = line.charAt(x);
 					Direction direction = Direction.getDirection(chr);
+					//If this tile specifies a direction, it is where the guard will spawn, facing in that direction.
 					if (direction != null)
 					{
-						guard = new Guard(this, x, y, direction);
+						//The actual tile at this position will be a floor tile.
 						grid[y][x] = new Tile(TileType.floor);
+						
+						guard = new Guard(this, x, y, direction);
 						startX = x;
 						startY = y;
 					}
 					else
 					{
+						//Otherwise we determine which tile type will be at this position.
 						TileType tile = TileType.getTile(chr);
 						if (tile != null)
 							grid[y][x] = new Tile(tile);
@@ -97,10 +109,22 @@ public class Day6
 							throw new RuntimeException("Unexpected character '" + chr + "'");
 					}
 				}
+				
+				y++;
+				if (reader.ready())
+					line = reader.readLine();
+				else
+					line = "";
 			}
 			reader.close();
 		}
 		
+		/**
+		 * Gets the type of a tile in the grid.
+		 * <p>
+		 *     Returns the out of bounds tile type for positions not in the grid.
+		 * </p>
+		 */
 		TileType getTileType(int x, int y)
 		{
 			if (x >= 0 && x < size && y >= 0 && y < size)
@@ -109,6 +133,12 @@ public class Day6
 				return TileType.OOB;
 		}
 		
+		/**
+		 * Gets a tile in the grid.
+		 * <p>
+		 *     Returns an out of bounds tile for positions not in the grid.
+		 * </p>
+		 */
 		Tile getTile(int x, int y)
 		{
 			if (x >= 0 && x < size && y >= 0 && y < size)
@@ -160,21 +190,33 @@ public class Day6
 			this.grid = grid;
 		}
 		
+		/**
+		 * Advances the guard forward one step.
+		 *
+		 */
 		void step()
 		{
 			if (grid.getTileType(x, y) != TileType.traversed_floor)
 			{
+				//If we have not yet traversed this tile, we increment our count of traversed tiles.
 				traversedTiles++;
+				
+				//If this isn't the guard's spawn position, then we also record this as an obstacle candidate position
+				//if recording is currently enabled.
 				if (recordObstacleCandidates && !(x == grid.startX && y == grid.startY))
 					obstacleCandidates.add(new ObstacleCandidate(x, y));
 			}
 			
 			Tile tile = grid.getTile(x, y);
+			//Update the type of this tile, so we can know that we have already been here if we return in the future.
 			tile.type = TileType.traversed_floor;
+			//We also record which direction are facing in, so we can determine if we are in a looped path.
 			tile.traversedDirections.add(direction);
+			//Move the guard forward in the direction they are currently facing.
 			x += direction.dx;
 			y += direction.dy;
-			checkForObstacle();
+			
+			turnAwayFromObstacle();
 		}
 		
 		boolean facingObstacle()
@@ -183,7 +225,13 @@ public class Day6
 			return !tile.traversable;
 		}
 		
-		void checkForObstacle()
+		/**
+		 * Rotates the guard until they are not facing an obstacle.
+		 * <p>
+		 *     This will do nothing if the guard is already not facing an obstacle.
+		 * </p>
+		 */
+		void turnAwayFromObstacle()
 		{
 			while (facingObstacle())
 			{
@@ -195,6 +243,8 @@ public class Day6
 		
 		boolean inLoop()
 		{
+			//We are in a looped path if we have already passed through our current position in the same direction that
+			//we are currently facing.
 			Tile tile = grid.getTile(x, y);
 			return tile.traversed() && tile.checkDirection(direction);
 		}
@@ -226,6 +276,9 @@ public class Day6
 			this.traversedDirections.addAll(tile.traversedDirections);
 		}
 		
+		/**
+		 * Checks if this tile has been traversed in a given direction.
+		 */
 		boolean checkDirection(Direction direction)
 		{
 			return traversedDirections.contains(direction);

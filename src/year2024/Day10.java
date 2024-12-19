@@ -29,28 +29,38 @@ public class Day10
 		Map(String file) throws IOException
 		{
 			BufferedReader reader = new BufferedReader(new FileReader(file));
-			//get our map size from the first line
-			size = Integer.parseInt(reader.readLine());
-			heights = new int[size][size];
 			trailHeads = new ArrayList<>();
-			//read map data
-			for (int y = 0; y < size; y++)
+			int y = 0;
+			String line = reader.readLine();
+			while (!line.isEmpty())
 			{
-				String line = reader.readLine();
+				//If this is the first line then we use it to determine the grid size.
+				if (heights == null)
+				{
+					size = line.length();
+					heights = new int[size][size];
+				}
+				
 				for (int x = 0; x < size; x++)
 				{
 					heights[y][x] = Integer.parseInt(line.charAt(x) + "");
 					if (heights[y][x] == 0)
 						trailHeads.add(new int[] {x, y});
 				}
+				
+				y++;
+				if (reader.ready())
+					line = reader.readLine();
+				else
+					line = "";
 			}
 			reader.close();
 		}
 		
 		/**
-		 * Gets the height at a position in the map
+		 * Gets the height at a position in the map.
 		 * <p>
-		 *     Returns -1 if the given position is not on the map
+		 *     Returns -1 if the given position is not on the map.
 		 * </p>
 		 */
 		int getHeight(int x, int y)
@@ -62,10 +72,10 @@ public class Day10
 		}
 		
 		/**
-		 * Explores a trail up to it's highest point
+		 * Explores a trail up to it's highest point.
 		 * <p>
-		 *     0: total number of max height end points that could be reached
-		 *     1: total number of distinct trails leading to those end points
+		 *     0: total number of max height end points that could be reached.
+		 *     1: total number of distinct trails leading to those end points.
 		 * </p>
 		 */
 		int[] exploreTrail(int startX, int startY)
@@ -79,14 +89,14 @@ public class Day10
 		}
 		
 		/**
-		 * Gathers data about this trail
+		 * Gathers data about this trail.
 		 * <p>
-		 *     Bulk data from index 3 and on is grouped in pairs for each trail head
+		 *     Bulk data from index 3 and on is grouped in pairs for each trail head.
 		 *     <br><br>
-		 *     0: Trail head count<br>
-		 *     1: Map score<br>
-		 *     2: Map rating<br>
-		 *     3-[trail head count]: trail head score, trail head rating
+		 *     0: Trail head count.<br>
+		 *     1: Map score.<br>
+		 *     2: Map rating.<br>
+		 *     3-[trail head count]: trail head score, trail head rating.
 		 * </p>
 		 */
 		int[] trailData()
@@ -110,22 +120,22 @@ public class Day10
 		}
 		
 		/**
-		 * Steps through a trail, as part of trail exploration
+		 * Steps through a trail, as part of trail exploration.
 		 * @see #exploreTrail(int, int)
 		 */
 		void trailStep(int startX, int startY, ArrayList<int[]> gatheredPositions)
 		{
 			int startingHeight = getHeight(startX, startY);
 			
-			//to trail to explore if we aren't even starting in the map
+			//No trail to explore if we aren't even starting in the map.
 			if (startingHeight < 0)
 				return;
 			
-			//this is guaranteed to be the end point if we are starting at max height
+			//This is guaranteed to be the end point if we are starting at max height.
 			if (startingHeight == 9)
 			{
-				//if we have already found this particular peak, increment its trail count
-				//otherwise, add it to our list as a new peak position
+				//If we have already found this particular peak, increment its trail count.
+				//Otherwise, add it to our list as a new peak position.
 				int index = getPositionIndex(startX, startY, gatheredPositions);
 				if (index == -1)
 					gatheredPositions.add(new int[] {startX, startY, 1});
@@ -139,16 +149,16 @@ public class Day10
 				int y = startY + direction.dy;
 				int height = getHeight(x, y);
 				
-				//the trail only ever goes up, only in increments of one, and doesn't leave the map
+				//The trail only ever goes up, only in increments of one, and doesn't leave the map.
 				if (height >= 0 && height - startingHeight == 1)
 					trailStep(x, y, gatheredPositions);
 			}
 		}
 		
 		/**
-		 * Gets the index of a position from a list of positions
+		 * Gets the index of a position from a list of positions.
 		 * <p>
-		 *     Returns -1 if the position is not contained, or it's index if it is
+		 *     Returns -1 if the position is not contained, or it's index if it is.
 		 * </p>
 		 */
 		int getPositionIndex(int positionX, int positionY, ArrayList<int[]> positionList)
